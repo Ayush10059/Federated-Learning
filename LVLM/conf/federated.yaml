@@ -1,0 +1,57 @@
+# Federated Instruction Tuning
+---
+
+dataset:
+  name: "DanJoshua/RWF-2000"
+
+model:
+  name: "llava-hf/LLaVa-NeXT-Video-7b-hf"
+  quantization: 4 # 8 or 4 if you want to do quantization with BitsAndBytes
+  gradient_checkpointing: True
+  use_fast_tokenizer: False
+  lora:
+    r: 16
+    alpha: 64
+    target_modules: ["q_proj","v_proj"]
+    dropout: 0.075
+    bias: "none"
+  num_frames: 24
+  save_model_path: "fl_model/${model.name}_final_model.pt"
+  
+
+train:
+  num_rounds: ${flower.num_rounds}
+  save_every_round: 5
+  learning_rate_max: 5e-5
+  learning_rate_min: 1e-6
+  seq_length: 512
+  padding_side: "left"
+  evaluate_split: true
+  training_arguments:
+    batch_size: 2
+    output_dir: null # to be set by hydra
+    learning_rate: 5e-5
+    per_device_train_batch_size: 1
+    gradient_accumulation_steps: 1
+    logging_steps: 10
+    num_train_epochs: 3
+    max_steps: 10
+    report_to: null
+    save_steps: 1000
+    save_total_limit: 10
+    gradient_checkpointing: ${model.gradient_checkpointing}
+    lr_scheduler_type: "constant"
+  
+flower:
+    num_clients: 4
+    num_rounds: 10
+    fraction_fit: 0.00001
+    min_fit_clients: 4
+    min_available_clients: 4
+    min_evaluate_clients: 4
+    client_resources:
+      num_cpus: 4
+      num_gpus: 1.0
+    dp:
+      noise_mult: 0.02
+      clip_norm: 0.5
